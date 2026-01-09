@@ -1,1 +1,2 @@
-3.12.13
+discord.py==2.4.0
+python-dotenv==1.0.1
