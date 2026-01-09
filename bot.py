@@ -5,6 +5,9 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
+self._message_count = 0
+self._last_post_ts = 0 
+
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -46,7 +49,14 @@ async def on_ready():
     print(f"✅ Le Livreur de Memes connecté : {bot.user} (id={bot.user.id}) | TZ={TZ}")
 
 @bot.event
-async def on_message(message: discord.Message):
+async def on_message(message: discord.Message): 
+    self._message_count += 1
+
+if self._message_count >= 40:
+    if time.time() - self._last_post_ts > 1800:  # 30 min
+        await message.channel.send("🃏 *Le Livreur de Memes surgit au bon moment.*")
+        self._message_count = 0
+        self._last_post_ts = time.time()
     if message.author.bot:
         return
 
