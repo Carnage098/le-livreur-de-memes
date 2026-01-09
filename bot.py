@@ -1,12 +1,9 @@
 import os
 import time
 import random
-import discord
-from discord import app_commands
-from discord.ext import commands
 
-self._message_count = 0
-self._last_post_ts = 0 
+import discord
+from discord.ext import commands
 
 try:
     from dotenv import load_dotenv
@@ -16,7 +13,7 @@ except Exception:
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 CHANNEL_ID = int(os.getenv("CHANNEL_ID", "0"))
-TZ = os.getenv("TZ", "Europe/Paris")  # juste pour cohérence Railway
+TZ = os.getenv("TZ", "Europe/Paris")
 
 if not DISCORD_TOKEN:
     raise RuntimeError("DISCORD_TOKEN manquant.")
@@ -26,37 +23,41 @@ if CHANNEL_ID == 0:
 INTENTS = discord.Intents.default()
 INTENTS.message_content = True  # nécessaire pour lire les messages (triggers)
 
+
 class MemeBot(commands.Bot):
     def __init__(self):
         super().__init__(command_prefix="!", intents=INTENTS)
-        self._last_auto_meme_ts = 0.0  # cooldown global anti-spam
+
+        # Cooldown global anti-spam pour les réactions auto (triggers)
+        self._last_auto_meme_ts: float = 0.0
+
+        # Intervention "tout seul" basée sur activité
+        self._message_count: int = 0
+        self._last_post_ts: float = 0.0
 
     async def setup_hook(self):
-        # Slash commands global
+        # Sync des slash commands
         await self.tree.sync()
 
+
 bot = MemeBot()
+
 
 def is_target_channel(channel: discord.abc.GuildChannel | None) -> bool:
     return channel is not None and getattr(channel, "id", None) == CHANNEL_ID
 
+
 def global_cooldown_ok(now: float, cooldown_s: int = 20) -> bool:
     return (now - bot._last_auto_meme_ts) >= cooldown_s
 
-# --- Events ---
+
 @bot.event
 async def on_ready():
     print(f"✅ Le Livreur de Memes connecté : {bot.user} (id={bot.user.id}) | TZ={TZ}")
 
-@bot.event
-async def on_message(message: discord.Message): 
-    self._message_count += 1
 
-if self._message_count >= 40:
-    if time.time() - self._last_post_ts > 1800:  # 30 min
-        await message.channel.send("🃏 *Le Livreur de Memes surgit au bon moment.*")
-        self._message_count = 0
-        self._last_post_ts = time.time()
+@bot.event
+async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
@@ -66,6 +67,21 @@ if self._message_count >= 40:
 
     content = (message.content or "").lower()
 
+    # ----- 1) Intervention autonome (rare, basée sur l'activité) -----
+    bot._message_count += 1
+
+    # Après 40 messages humains, possibilité d'un message du bot (max 1/30min)
+    if bot._message_count >= 40:
+        now = time.time()
+        if (now - bot._last_post_ts) > 1800:  # 30 minutes
+            await message.channel.send("🃏 *Le Livreur de Memes surgit au bon moment.* 😂")
+            bot._message_count = 0
+            bot._last_post_ts = now
+        else:
+            # On évite d'atteindre 1000 et de spammer: on reset doucement
+            bot._message_count = 20
+
+    # ----- 2) Réactions aux mots-clés (avec cooldown + proba) -----
     triggers = [
         "brick", "brique", "topdeck", "missplay", "misplay",
         "ash", "maxx", "rng", "chance", "no starter", "starter"
@@ -86,7 +102,8 @@ if self._message_count >= 40:
 
     await bot.process_commands(message)
 
-# --- Slash commands ---
+
+# ----- Slash commands -----
 @bot.tree.command(name="health", description="Vérifie que Le Livreur de Memes fonctionne.")
 async def health(interaction: discord.Interaction):
     if not is_target_channel(interaction.channel):
@@ -96,6 +113,7 @@ async def health(interaction: discord.Interaction):
         )
         return
     await interaction.response.send_message("✅ Le Livreur de Memes est en ligne !")
+
 
 @bot.tree.command(name="meme", description="Poste un meme (texte) dans #😂・memes-ygo.")
 async def meme(interaction: discord.Interaction):
@@ -115,5 +133,5 @@ async def meme(interaction: discord.Interaction):
     ]
     await interaction.response.send_message("😂 " + random.choice(memes))
 
-# --- Run ---
+
 bot.run(DISCORD_TOKEN)
