@@ -103,17 +103,13 @@ def create_embed(meme_url):
     return embed
 
 
-# 🚚 envoyer meme
+# 🚚 envoyer meme (sans réactions)
 async def send_meme(channel):
     meme = get_meme()
 
     meme_stats["sent"] += 1
     embed = create_embed(meme)
-    msg = await channel.send(embed=embed)
-
-    # 👍👎 réactions
-    await msg.add_reaction("👍")
-    await msg.add_reaction("👎")
+    await channel.send(embed=embed)
 
 
 # 🚀 bot prêt
