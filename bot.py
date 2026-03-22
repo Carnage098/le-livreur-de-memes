@@ -24,14 +24,13 @@ tree = app_commands.CommandTree(client)
 sent_memes = []
 meme_stats = {"sent": 0}
 
-# 🔀 subreddits
+# 🔀 subreddits 100% memes
 SUBREDDITS = [
     "yugiohmemes",
-    "YuGiOhMemes",
-    "masterduel"
+    "YuGiOhMemes"
 ]
 
-# 🧠 récupération FIABLE
+# 🧠 récupération filtrée
 def get_meme():
     try:
         subreddit = random.choice(SUBREDDITS)
@@ -48,7 +47,12 @@ def get_meme():
         for p in posts:
             post = p["data"]
 
-            # ✅ méthode fiable : preview
+            # 🧠 filtre titre (meme uniquement)
+            title = post.get("title", "").lower()
+            if not any(word in title for word in ["meme", "funny", "joke", "lol"]):
+                continue
+
+            # 🖼️ récupération image fiable
             if "preview" in post:
                 try:
                     img = post["preview"]["images"][0]["source"]["url"]
@@ -57,7 +61,7 @@ def get_meme():
                 except:
                     continue
 
-        print(f"📸 Images trouvées: {len(images)}")
+        print(f"📸 Images trouvées (filtrées): {len(images)}")
 
         # 🛟 fallback si rien trouvé
         if not images:
