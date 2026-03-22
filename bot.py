@@ -20,21 +20,21 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
-# 🔥 mémoire
+# 🔥 mémoire anti-doublons
 sent_memes = []
 meme_stats = {"sent": 0}
 
-# 🔀 subreddits 100% memes
+# 🔀 subreddits
 SUBREDDITS = [
     "yugiohmemes",
     "YuGiOhMemes"
 ]
 
-# 🧠 récupération filtrée
+# 🧠 récupération améliorée
 def get_meme():
     try:
         subreddit = random.choice(SUBREDDITS)
-        url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit=50"
+        url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit=100"
         headers = {"User-Agent": "Mozilla/5.0"}
 
         res = requests.get(url, headers=headers)
@@ -47,12 +47,12 @@ def get_meme():
         for p in posts:
             post = p["data"]
 
-            # 🧠 filtre titre (meme uniquement)
+            # filtre léger (plus de variété)
             title = post.get("title", "").lower()
-            if not any(word in title for word in ["meme", "funny", "joke", "lol"]):
+            if not any(word in title for word in ["meme", "funny", "lol"]):
                 continue
 
-            # 🖼️ récupération image fiable
+            # récupération image fiable
             if "preview" in post:
                 try:
                     img = post["preview"]["images"][0]["source"]["url"]
@@ -61,22 +61,26 @@ def get_meme():
                 except:
                     continue
 
-        print(f"📸 Images trouvées (filtrées): {len(images)}")
+        print(f"📸 Images trouvées: {len(images)}")
 
-        # 🛟 fallback si rien trouvé
         if not images:
             return "https://i.imgur.com/3ZUrjUP.jpeg"
 
         random.shuffle(images)
 
-        # 🚫 anti-doublons
+        # 🚫 anti-doublons intelligent
         for img in images:
             if img not in sent_memes:
                 sent_memes.append(img)
-                if len(sent_memes) > 50:
-                    sent_memes.pop(0)
+
+                if len(sent_memes) > 100:
+                    sent_memes.clear()
+
                 return img
 
+        # ♻️ reset si tout déjà envoyé
+        print("♻️ Reset des memes")
+        sent_memes.clear()
         return random.choice(images)
 
     except Exception as e:
