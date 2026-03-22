@@ -24,17 +24,18 @@ tree = app_commands.CommandTree(client)
 sent_memes = []
 meme_stats = {"sent": 0}
 
-# 🔀 plusieurs sources
+# 🔀 subreddits
 SUBREDDITS = [
     "yugiohmemes",
     "YuGiOhMemes",
     "masterduel"
 ]
 
+# 🧠 récupération améliorée
 def get_meme():
     try:
         subreddit = random.choice(SUBREDDITS)
-        url = f"https://www.reddit.com/r/{subreddit}/top.json?limit=50&t=day"
+        url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit=50"
         headers = {"User-Agent": "Mozilla/5.0"}
 
         res = requests.get(url, headers=headers)
@@ -42,17 +43,33 @@ def get_meme():
 
         posts = data["data"]["children"]
 
-        images = [
-            p["data"]["url"]
-            for p in posts
-            if p["data"]["url"].endswith((".jpg", ".png", ".jpeg"))
-        ]
+        images = []
+
+        for p in posts:
+            post = p["data"]
+
+            # récupérer image proprement
+            if post.get("url_overridden_by_dest"):
+                img = post["url_overridden_by_dest"]
+            elif post.get("url"):
+                img = post["url"]
+            else:
+                continue
+
+            # filtrage basique
+            if "http" not in img:
+                continue
+            if "reddit.com/gallery" in img:
+                continue
+
+            images.append(img)
 
         if not images:
             return None
 
         random.shuffle(images)
 
+        # 🚫 anti-doublons
         for img in images:
             if img not in sent_memes:
                 sent_memes.append(img)
@@ -60,13 +77,14 @@ def get_meme():
                     sent_memes.pop(0)
                 return img
 
-        return None
+        return random.choice(images)
 
     except Exception as e:
         print("❌ Erreur meme:", e)
         return None
 
 
+# 🎨 embed stylé
 def create_embed(meme_url):
     messages = [
         "📦 Livraison express de memes !",
@@ -85,6 +103,7 @@ def create_embed(meme_url):
     return embed
 
 
+# 🚚 envoyer meme
 async def send_meme(channel):
     meme = get_meme()
 
@@ -100,7 +119,7 @@ async def send_meme(channel):
         await channel.send("❌ Le livreur n’a rien trouvé...")
 
 
-# 🚀 BOT READY
+# 🚀 bot prêt
 @client.event
 async def on_ready():
     print(f"✅ Connecté en tant que {client.user}")
