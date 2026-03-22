@@ -1,16 +1,19 @@
+import os
 import discord
-import requests
-import os
-import random
-from dotenv import load_dotenv
-
-import os
 from dotenv import load_dotenv
 
 load_dotenv()
 
-print("TOKEN =", os.getenv("TOKEN"))
-print("CHANNEL_ID =", os.getenv("CHANNEL_ID"))
+TOKEN = os.getenv("TOKEN")
+CHANNEL_ID = os.getenv("CHANNEL_ID")
+
+print("TOKEN =", TOKEN)
+print("CHANNEL_ID =", CHANNEL_ID)
+
+if not TOKEN:
+    raise Exception("❌ TOKEN manquant (Railway Variables)")
+
+CHANNEL_ID = int(CHANNEL_ID)
 
 intents = discord.Intents.default()
 intents.message_content = True
