@@ -31,7 +31,7 @@ SUBREDDITS = [
     "masterduel"
 ]
 
-# 🧠 récupération améliorée
+# 🧠 récupération FIABLE
 def get_meme():
     try:
         subreddit = random.choice(SUBREDDITS)
@@ -48,24 +48,20 @@ def get_meme():
         for p in posts:
             post = p["data"]
 
-            # récupérer image proprement
-            if post.get("url_overridden_by_dest"):
-                img = post["url_overridden_by_dest"]
-            elif post.get("url"):
-                img = post["url"]
-            else:
-                continue
+            # ✅ méthode fiable : preview
+            if "preview" in post:
+                try:
+                    img = post["preview"]["images"][0]["source"]["url"]
+                    img = img.replace("&amp;", "&")
+                    images.append(img)
+                except:
+                    continue
 
-            # filtrage basique
-            if "http" not in img:
-                continue
-            if "reddit.com/gallery" in img:
-                continue
+        print(f"📸 Images trouvées: {len(images)}")
 
-            images.append(img)
-
+        # 🛟 fallback si rien trouvé
         if not images:
-            return None
+            return "https://i.imgur.com/3ZUrjUP.jpeg"
 
         random.shuffle(images)
 
@@ -81,7 +77,7 @@ def get_meme():
 
     except Exception as e:
         print("❌ Erreur meme:", e)
-        return None
+        return "https://i.imgur.com/3ZUrjUP.jpeg"
 
 
 # 🎨 embed stylé
@@ -107,16 +103,13 @@ def create_embed(meme_url):
 async def send_meme(channel):
     meme = get_meme()
 
-    if meme:
-        meme_stats["sent"] += 1
-        embed = create_embed(meme)
-        msg = await channel.send(embed=embed)
+    meme_stats["sent"] += 1
+    embed = create_embed(meme)
+    msg = await channel.send(embed=embed)
 
-        # 👍👎 réactions
-        await msg.add_reaction("👍")
-        await msg.add_reaction("👎")
-    else:
-        await channel.send("❌ Le livreur n’a rien trouvé...")
+    # 👍👎 réactions
+    await msg.add_reaction("👍")
+    await msg.add_reaction("👎")
 
 
 # 🚀 bot prêt
