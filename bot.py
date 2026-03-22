@@ -20,11 +20,11 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
-# 🔥 mémoire anti-doublons (plus rapide avec set)
+# 🔥 mémoire anti-doublons
 sent_memes = set()
 meme_stats = {"sent": 0}
 
-# 🔀 subreddits (plus de variété)
+# 🔀 subreddits
 SUBREDDITS = [
     "yugiohmemes",
     "YuGiOhMemes",
@@ -33,14 +33,44 @@ SUBREDDITS = [
     "duellinks"
 ]
 
-# 🧠 récupération améliorée
+# =========================
+# 🎴 CARTE YU-GI-OH API
+# =========================
+def get_random_card():
+    try:
+        url = "https://db.ygoprodeck.com/api/v7/randomcard.php"
+        res = requests.get(url, timeout=10)
+        data = res.json()
+
+        name = data.get("name", "Carte inconnue")
+        desc = data.get("desc", "Pas d'effet")
+        image = data["card_images"][0]["image_url"]
+
+        return {
+            "name": name,
+            "desc": desc[:300] + "...",
+            "image": image
+        }
+
+    except Exception as e:
+        print("❌ Erreur carte:", e)
+        return None
+
+
+# =========================
+# 😂 MEME REDDIT AMÉLIORÉ
+# =========================
 def get_meme():
     try:
         subreddit = random.choice(SUBREDDITS)
+        feed_type = random.choice(["new", "hot", "top"])
+        after = random.randint(1, 1000)
 
-        # 👉 new = beaucoup plus aléatoire que hot
-        url = f"https://www.reddit.com/r/{subreddit}/new.json?limit=100"
-        headers = {"User-Agent": "Mozilla/5.0"}
+        url = f"https://www.reddit.com/r/{subreddit}/{feed_type}.json?limit=100&after=t3_{after}"
+
+        headers = {
+            "User-Agent": f"DiscordBot:{random.randint(1,999999)}"
+        }
 
         res = requests.get(url, headers=headers, timeout=10)
         data = res.json()
@@ -50,36 +80,28 @@ def get_meme():
 
         for p in posts:
             post = p["data"]
+            url = post.get("url", "")
 
-            # ✅ uniquement images
-            if post.get("post_hint") != "image":
-                continue
+            if any(url.endswith(ext) for ext in [".jpg", ".png", ".jpeg", ".gif"]):
+                images.append(url)
 
-            img = post.get("url")
-
-            if img:
-                images.append(img)
-
-        print(f"📸 {subreddit} → {len(images)} images trouvées")
+        print(f"📸 {subreddit} ({feed_type}) → {len(images)} images")
 
         if not images:
             return "https://i.imgur.com/3ZUrjUP.jpeg"
 
         random.shuffle(images)
 
-        # 🚫 anti-doublons intelligent
         for img in images:
             if img not in sent_memes:
                 sent_memes.add(img)
 
-                # limite mémoire
-                if len(sent_memes) > 200:
+                if len(sent_memes) > 300:
                     sent_memes.clear()
 
                 return img
 
-        # ♻️ reset si tout déjà envoyé
-        print("♻️ Reset des memes")
+        print("♻️ Reset memes")
         sent_memes.clear()
         return random.choice(images)
 
@@ -88,36 +110,56 @@ def get_meme():
         return "https://i.imgur.com/3ZUrjUP.jpeg"
 
 
-# 🎨 embed stylé
-def create_embed(meme_url):
+# =========================
+# 🎨 EMBED COMBINÉ
+# =========================
+def create_embed(meme_url, card):
     messages = [
-        "📦 Livraison express de memes !",
-        "🚚 Le livreur débarque avec un colis !",
-        "😂 Meme fraîchement livré !",
-        "🔥 Meme rare trouvé sur le terrain !",
-        "⚡ Invocation spéciale d’un meme !"
+        "⚡ Invocation spéciale !",
+        "🔥 Combo ultime activé !",
+        "🎴 Duel + meme en cours !",
+        "💥 Attaque directe avec un meme !",
+        "😂 Piège activé : humour !"
     ]
 
     embed = discord.Embed(
         title=random.choice(messages),
         color=discord.Color.random()
     )
+
+    # meme
     embed.set_image(url=meme_url)
-    embed.set_footer(text=f"📊 Memes livrés : {meme_stats['sent']}")
+
+    # carte
+    if card:
+        embed.add_field(
+            name=f"🎴 {card['name']}",
+            value=card["desc"],
+            inline=False
+        )
+        embed.set_thumbnail(url=card["image"])
+
+    embed.set_footer(text=f"📊 Memes envoyés : {meme_stats['sent']}")
+
     return embed
 
 
-# 🚚 envoyer meme
-async def send_meme(channel):
+# =========================
+# 🚚 ENVOI
+# =========================
+async def send_combo(channel):
     meme = get_meme()
+    card = get_random_card()
 
     meme_stats["sent"] += 1
-    embed = create_embed(meme)
 
+    embed = create_embed(meme, card)
     await channel.send(embed=embed)
 
 
-# 🚀 bot prêt
+# =========================
+# 🚀 BOT READY
+# =========================
 @client.event
 async def on_ready():
     print(f"✅ Connecté en tant que {client.user}")
@@ -131,25 +173,39 @@ async def on_ready():
         return
 
     while True:
-        await send_meme(channel)
-        await asyncio.sleep(1800)  # ⏱️ 30 min
+        await send_combo(channel)
+        await asyncio.sleep(1800)  # 30 min
 
 
-# 💬 commande texte
+# =========================
+# 💬 COMMANDES
+# =========================
 @client.event
 async def on_message(message):
     if message.author.bot:
         return
 
     if message.content == "!meme":
-        await send_meme(message.channel)
+        await send_combo(message.channel)
+
+    if message.content == "!card":
+        card = get_random_card()
+        embed = create_embed("https://i.imgur.com/3ZUrjUP.jpeg", card)
+        await message.channel.send(embed=embed)
 
 
-# ⚡ commande slash
-@tree.command(name="meme", description="Recevoir un meme Yu-Gi-Oh")
+@tree.command(name="meme", description="Meme + carte Yu-Gi-Oh")
 async def meme_slash(interaction: discord.Interaction):
     await interaction.response.defer()
-    await send_meme(interaction.channel)
+    await send_combo(interaction.channel)
+
+
+@tree.command(name="card", description="Carte Yu-Gi-Oh aléatoire")
+async def card_slash(interaction: discord.Interaction):
+    await interaction.response.defer()
+    card = get_random_card()
+    embed = create_embed("https://i.imgur.com/3ZUrjUP.jpeg", card)
+    await interaction.followup.send(embed=embed)
 
 
 client.run(TOKEN)
