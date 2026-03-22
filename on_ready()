@@ -1,0 +1,25 @@
+from datetime import timedelta
+import requests
+
+@client.event
+async def on_ready():
+    print(f"✅ Connecté en tant que {client.user}")
+
+    channel = client.get_channel(CHANNEL_ID)
+
+    if not channel:
+        print("❌ Salon introuvable")
+        return
+
+    while True:
+        meme = get_meme()
+
+        if meme:
+            embed = discord.Embed(title="😂 Meme Yu-Gi-Oh")
+            embed.set_image(url=meme)
+            await channel.send(embed=embed)
+
+        # ⬇️ ICI c’est bon
+        await discord.utils.sleep_until(
+            discord.utils.utcnow() + timedelta(minutes=30)
+        )
