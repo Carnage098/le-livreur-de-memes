@@ -4,10 +4,13 @@ import os
 import random
 from dotenv import load_dotenv
 
+import os
+from dotenv import load_dotenv
+
 load_dotenv()
 
-TOKEN = os.getenv("TOKEN")
-CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+print("TOKEN =", os.getenv("TOKEN"))
+print("CHANNEL_ID =", os.getenv("CHANNEL_ID"))
 
 intents = discord.Intents.default()
 intents.message_content = True
