@@ -20,48 +20,47 @@ intents.message_content = True
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
-# 🔥 mémoire anti-doublons
-sent_memes = []
+# 🔥 mémoire anti-doublons (plus rapide avec set)
+sent_memes = set()
 meme_stats = {"sent": 0}
 
-# 🔀 subreddits
+# 🔀 subreddits (plus de variété)
 SUBREDDITS = [
     "yugiohmemes",
-    "YuGiOhMemes"
+    "YuGiOhMemes",
+    "yugioh",
+    "masterduel",
+    "duellinks"
 ]
 
 # 🧠 récupération améliorée
 def get_meme():
     try:
         subreddit = random.choice(SUBREDDITS)
-        url = f"https://www.reddit.com/r/{subreddit}/hot.json?limit=100"
+
+        # 👉 new = beaucoup plus aléatoire que hot
+        url = f"https://www.reddit.com/r/{subreddit}/new.json?limit=100"
         headers = {"User-Agent": "Mozilla/5.0"}
 
-        res = requests.get(url, headers=headers)
+        res = requests.get(url, headers=headers, timeout=10)
         data = res.json()
 
         posts = data["data"]["children"]
-
         images = []
 
         for p in posts:
             post = p["data"]
 
-            # filtre léger (plus de variété)
-            title = post.get("title", "").lower()
-            if not any(word in title for word in ["meme", "funny", "lol"]):
+            # ✅ uniquement images
+            if post.get("post_hint") != "image":
                 continue
 
-            # récupération image fiable
-            if "preview" in post:
-                try:
-                    img = post["preview"]["images"][0]["source"]["url"]
-                    img = img.replace("&amp;", "&")
-                    images.append(img)
-                except:
-                    continue
+            img = post.get("url")
 
-        print(f"📸 Images trouvées: {len(images)}")
+            if img:
+                images.append(img)
+
+        print(f"📸 {subreddit} → {len(images)} images trouvées")
 
         if not images:
             return "https://i.imgur.com/3ZUrjUP.jpeg"
@@ -71,9 +70,10 @@ def get_meme():
         # 🚫 anti-doublons intelligent
         for img in images:
             if img not in sent_memes:
-                sent_memes.append(img)
+                sent_memes.add(img)
 
-                if len(sent_memes) > 100:
+                # limite mémoire
+                if len(sent_memes) > 200:
                     sent_memes.clear()
 
                 return img
@@ -107,12 +107,13 @@ def create_embed(meme_url):
     return embed
 
 
-# 🚚 envoyer meme (sans réactions)
+# 🚚 envoyer meme
 async def send_meme(channel):
     meme = get_meme()
 
     meme_stats["sent"] += 1
     embed = create_embed(meme)
+
     await channel.send(embed=embed)
 
 
@@ -131,7 +132,7 @@ async def on_ready():
 
     while True:
         await send_meme(channel)
-        await asyncio.sleep(1800)  # 30 min
+        await asyncio.sleep(1800)  # ⏱️ 30 min
 
 
 # 💬 commande texte
