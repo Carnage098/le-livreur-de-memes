@@ -1,6 +1,8 @@
-import requests
 import os
 import discord
+import requests
+import random
+import asyncio
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -43,7 +45,7 @@ def get_meme():
         return random.choice(images)
 
     except Exception as e:
-        print("Erreur meme:", e)
+        print("❌ Erreur meme:", e)
         return None
 
 
@@ -64,10 +66,10 @@ async def on_ready():
             embed = discord.Embed(title="😂 Meme Yu-Gi-Oh")
             embed.set_image(url=meme)
             await channel.send(embed=embed)
+        else:
+            print("❌ Aucun meme trouvé")
 
-        await discord.utils.sleep_until(
-            discord.utils.utcnow() + discord.timedelta(minutes=30)
-        )
+        await asyncio.sleep(1800)  # 30 minutes
 
 
 @client.event
@@ -79,6 +81,8 @@ async def on_message(message):
         meme = get_meme()
         if meme:
             await message.channel.send(meme)
+        else:
+            await message.channel.send("❌ Aucun meme trouvé")
 
 
 client.run(TOKEN)
